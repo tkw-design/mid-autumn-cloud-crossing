@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mid-Autumn Cloud Crossing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: none; /* Prevent unwanted scrolling on touch devices */
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 5 / 6;
+            background: linear-gradient(to bottom, #1e1b4b, #312e81, #1e293b);
+        }
+        .btn-control {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: all 0.1s ease;
+        }
+        .btn-control:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .difficulty-btn {
+            transition: all 0.2s ease;
+        }
+        .difficulty-btn.selected {
+            background-color: #4f46e5; /* Indigo 600 */
+            border-color: #818cf8; /* Indigo 400 */
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
+
+    <div class="max-w-md w-full flex flex-col gap-4">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center px-2">
+            <h1 class="text-xl font-bold text-yellow-300 drop-shadow-md">中秋: Cloud Crossing</h1>
+            <div class="text-lg font-bold bg-slate-800 px-4 py-1 rounded-full border border-slate-600">
+                ⏱ <span id="timerDisplay">30</span>s
+            </div>
+        </div>
+
+        <!-- Canvas Container with Overlays -->
+        <div class="relative w-full rounded-2xl overflow-hidden shadow-2xl border-4 border-indigo-900/50">
+            <canvas id="gameCanvas" width="500" height="600"></canvas>
+
+            <!-- Start Screen Overlay -->
+            <div id="startScreen" class="absolute inset-0 glass-panel flex flex-col items-center justify-center text-center p-4 z-10 overflow-y-auto">
+                <img src="image_12f635.png" alt="Niulang and Zhinü" class="w-48 h-48 object-cover rounded-full shadow-lg border-2 border-indigo-400 mb-4" onerror="this.src='https://placehold.co/200x200/1e1b4b/f8fafc?text=Reunion';">
+                <h2 class="text-2xl font-bold text-yellow-300 mb-2">Reunite at the Moon</h2>
+                
+                <div class="text-xs text-slate-300 mb-4 max-w-sm text-left bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                    <p class="mb-2"><strong>The Legend of the Cowherd and the Weaver Girl:</strong></p>
+                    <p>Niulang (a cowherd) and Zhinü (a fairy weaver) fell in love but were separated by the Milky Way by the Goddess of Heaven. They are allowed to meet only once a year on a bridge of magpies.</p>
+                </div>
+
+                <p class="text-sm text-slate-200 mb-4 font-semibold">
+                    Help Niulang (🧑🏻‍🌾) cross the moving clouds to reach Zhinü (🧚🏻‍♀️). You have 30 seconds!
+                </p>
+
+                <div class="mb-6 w-full">
+                    <p class="text-xs font-semibold text-slate-400 mb-2">Select Difficulty:</p>
+                    <div class="flex justify-center gap-2">
+                        <button id="btnEasy" onclick="setDifficulty('easy')" class="difficulty-btn selected bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded-lg border border-slate-500 text-xs">Easy</button>
+                        <button id="btnMedium" onclick="setDifficulty('medium')" class="difficulty-btn bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded-lg border border-slate-500 text-xs">Medium</button>
+                        <button id="btnHard" onclick="setDifficulty('hard')" class="difficulty-btn bg-slate-700 hover:bg-slate-600 text-white py-1 px-3 rounded-lg border border-slate-500 text-xs">Hard</button>
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-6 rounded-full shadow-lg border border-indigo-400 text-base transition-transform transform hover:scale-105 active:scale-95">
+                    Start Game
+                </button>
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div id="gameOverScreen" class="absolute inset-0 glass-panel flex flex-col items-center justify-center text-center p-6 z-10 hidden">
+                <div class="text-6xl mb-4">💔</div>
+                <h2 class="text-3xl font-bold text-red-400 mb-2">Game Over</h2>
+                <p id="failReason" class="text-md text-slate-300 mb-6">You fell into the starry river.</p>
+                <div class="flex flex-col gap-3 w-full max-w-[200px]">
+                    <button onclick="startGame()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-full shadow-lg border border-indigo-400 transition-transform transform hover:scale-105 active:scale-95">
+                        Try Again
+                    </button>
+                    <button onclick="returnToMain()" class="bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 px-6 rounded-full shadow border border-slate-500 transition-transform transform hover:scale-105 active:scale-95 text-sm">
+                        Main Menu
+                    </button>
+                </div>
+            </div>
+
+            <!-- Win Overlay -->
+            <div id="winScreen" class="absolute inset-0 glass-panel flex flex-col items-center justify-center text-center p-6 z-10 hidden">
+                <div class="text-6xl mb-4">✨👩‍❤️‍👨✨</div>
+                <h2 class="text-3xl font-bold text-yellow-400 mb-2">Reunion Successful!</h2>
+                <p class="text-md text-slate-300 mb-6">You crossed the clouds and reached the Moon safely.</p>
+                <button onclick="startGame()" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-3 px-8 rounded-full shadow-lg border border-yellow-400 transition-transform transform hover:scale-105 active:scale-95">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 w-48 mx-auto mt-2 select-none">
+            <!-- Top Row -->
+            <div></div>
+            <button id="btnUp" class="btn-control h-14 rounded-xl flex items-center justify-center text-2xl font-bold">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+            <div></div>
+            <!-- Bottom Row -->
+            <button id="btnLeft" class="btn-control h-14 rounded-xl flex items-center justify-center text-2xl font-bold">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button id="btnDown" class="btn-control h-14 rounded-xl flex items-center justify-center text-2xl font-bold">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <button id="btnRight" class="btn-control h-14 rounded-xl flex items-center justify-center text-2xl font-bold">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI Elements
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const winScreen = document.getElementById('winScreen');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const failReasonText = document.getElementById('failReason');
+
+        // Game Constants
+        const CANVAS_WIDTH = 500;
+        const CANVAS_HEIGHT = 600;
+        const ROW_COUNT = 8; // Row 0 (Moon), Rows 1-6 (Clouds), Row 7 (Start)
+        const ROW_HEIGHT = CANVAS_HEIGHT / ROW_COUNT; // 75px per row
+        
+        let currentDifficulty = 'easy';
+        let speedMultiplier = 1.0;
+
+        // Game State Variables
+        let gameState = 'START'; // START, PLAYING, GAME_OVER, WIN
+        let lastTime = 0;
+        let timeLeft = 30.0;
+        
+        let player = {
+            row: 7,
+            x: CANVAS_WIDTH / 2 - 20,
+            y: 0, // Calculated dynamically based on row
+            w: 40,
+            h: 40
+        };
+
+        let clouds = [];
+        let stars = [];
+
+        function initStars() {
+            stars = [];
+            for(let i=0; i<80; i++) {
+                stars.push({
+                    x: Math.random() * CANVAS_WIDTH,
+                    y: Math.random() * CANVAS_HEIGHT,
+                    r: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.01
+                });
+            }
+        }
+
+        function initClouds() {
+            clouds = [];
+            // Row 1 (Fast, left to right)
+            clouds.push({ row: 1, x: 0, w: 120, speed: 2.0 * speedMultiplier });
+            clouds.push({ row: 1, x: 260, w: 120, speed: 2.0 * speedMultiplier });
+
+            // Row 2 (Moderate, right to left)
+            clouds.push({ row: 2, x: 100, w: 140, speed: -1.5 * speedMultiplier });
+            clouds.push({ row: 2, x: 380, w: 140, speed: -1.5 * speedMultiplier });
+
+            // Row 3 (Very Fast, left to right)
+            clouds.push({ row: 3, x: 50, w: 100, speed: 3.0 * speedMultiplier });
+            clouds.push({ row: 3, x: 280, w: 100, speed: 3.0 * speedMultiplier });
+
+            // Row 4 (Slow, right to left, long clouds)
+            clouds.push({ row: 4, x: 0, w: 180, speed: -1.2 * speedMultiplier });
+            clouds.push({ row: 4, x: 300, w: 180, speed: -1.2 * speedMultiplier });
+
+            // Row 5 (Moderate, left to right)
+            clouds.push({ row: 5, x: 100, w: 130, speed: 2.2 * speedMultiplier });
+            clouds.push({ row: 5, x: 350, w: 130, speed: 2.2 * speedMultiplier });
+
+            // Row 6 (Bottom clouds, slow, right to left)
+            clouds.push({ row: 6, x: 40, w: 150, speed: -1.0 * speedMultiplier });
+            clouds.push({ row: 6, x: 280, w: 150, speed: -1.0 * speedMultiplier });
+        }
+
+        function setDifficulty(level) {
+            currentDifficulty = level;
+            
+            // Update button visuals
+            document.getElementById('btnEasy').classList.remove('selected', 'bg-indigo-600', 'border-indigo-400');
+            document.getElementById('btnEasy').classList.add('bg-slate-700', 'border-slate-500');
+            document.getElementById('btnMedium').classList.remove('selected', 'bg-indigo-600', 'border-indigo-400');
+            document.getElementById('btnMedium').classList.add('bg-slate-700', 'border-slate-500');
+            document.getElementById('btnHard').classList.remove('selected', 'bg-indigo-600', 'border-indigo-400');
+            document.getElementById('btnHard').classList.add('bg-slate-700', 'border-slate-500');
+
+            const selectedBtn = document.getElementById(level === 'easy' ? 'btnEasy' : level === 'medium' ? 'btnMedium' : 'btnHard');
+            selectedBtn.classList.add('selected');
+            selectedBtn.classList.remove('bg-slate-700', 'border-slate-500');
+
+            // Set speed multiplier
+            if (level === 'easy') speedMultiplier = 1.0;
+            else if (level === 'medium') speedMultiplier = 1.5;
+            else if (level === 'hard') speedMultiplier = 2.2;
+        }
+
+        function resetPlayer() {
+            player.row = 7;
+            player.x = CANVAS_WIDTH / 2 - player.w / 2;
+            player.y = player.row * ROW_HEIGHT + (ROW_HEIGHT - player.h) / 2;
+        }
+
+        function returnToMain() {
+            gameOverScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            gameState = 'START';
+            
+            // Reset visuals for the main menu background
+            initStars();
+            initClouds();
+            resetPlayer();
+            draw(); 
+        }
+
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            
+            initStars();
+            initClouds();
+            resetPlayer();
+            
+            timeLeft = 30.0;
+            timerDisplay.innerText = "30";
+            timerDisplay.parentElement.classList.remove('text-red-400');
+            
+            gameState = 'PLAYING';
+            lastTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function triggerGameOver(reason) {
+            gameState = 'GAME_OVER';
+            failReasonText.innerText = reason;
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function triggerWin() {
+            gameState = 'WIN';
+            winScreen.classList.remove('hidden');
+        }
+
+        function movePlayer(dx, dy) {
+            if (gameState !== 'PLAYING') return;
+
+            // Horizontal movement hop
+            player.x += dx * 50;
+            
+            // Constrain to screen horizontally
+            if (player.x < 0) player.x = 0;
+            if (player.x > CANVAS_WIDTH - player.w) player.x = CANVAS_WIDTH - player.w;
+
+            // Vertical movement hop
+            let newRow = player.row + dy;
+            if (newRow >= 0 && newRow <= 7) {
+                player.row = newRow;
+                player.y = player.row * ROW_HEIGHT + (ROW_HEIGHT - player.h) / 2;
+            }
+        }
+
+        // Handle Keyboard Input
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'PLAYING') return;
+            switch(e.key) {
+                case 'ArrowUp': case 'w': movePlayer(0, -1); e.preventDefault(); break;
+                case 'ArrowDown': case 's': movePlayer(0, 1); e.preventDefault(); break;
+                case 'ArrowLeft': case 'a': movePlayer(-1, 0); e.preventDefault(); break;
+                case 'ArrowRight': case 'd': movePlayer(1, 0); e.preventDefault(); break;
+            }
+        });
+
+        // Handle Touch/Mouse Input on D-Pad
+        const bindButton = (id, dx, dy) => {
+            const btn = document.getElementById(id);
+            const trigger = (e) => {
+                e.preventDefault();
+                movePlayer(dx, dy);
+            };
+            btn.addEventListener('mousedown', trigger);
+            btn.addEventListener('touchstart', trigger, {passive: false});
+        };
+        bindButton('btnUp', 0, -1);
+        bindButton('btnDown', 0, 1);
+        bindButton('btnLeft', -1, 0);
+        bindButton('btnRight', 1, 0);
+
+        function update(dt) {
+            // Update Timer
+            timeLeft -= dt / 1000;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                triggerGameOver("Time is up! The moon faded away.");
+                return; // Stop updating
+            }
+            
+            timerDisplay.innerText = Math.ceil(timeLeft);
+            if (timeLeft <= 5) {
+                timerDisplay.parentElement.classList.add('text-red-400');
+            }
+
+            let timeScale = dt / 16.66; // Normalize speed to ~60FPS
+
+            // Update Stars
+            stars.forEach(s => {
+                s.alpha += s.speed * timeScale;
+                if(s.alpha >= 1 || s.alpha <= 0.2) s.speed *= -1;
+            });
+
+            // Update Clouds
+            clouds.forEach(c => {
+                c.x += c.speed * timeScale;
+                // Wrap around edges
+                if (c.speed > 0 && c.x > CANVAS_WIDTH) {
+                    c.x = -c.w;
+                } else if (c.speed < 0 && c.x + c.w < 0) {
+                    c.x = CANVAS_WIDTH;
+                }
+            });
+
+            // Collision Detection & Player Physics
+            if (player.row >= 1 && player.row <= 6) {
+                let onCloud = false;
+                
+                // Allow a small forgiving margin for collision (10 pixels)
+                let margin = 10; 
+                let playerLeft = player.x + margin;
+                let playerRight = player.x + player.w - margin;
+
+                for (let c of clouds) {
+                    if (c.row === player.row) {
+                        let cloudLeft = c.x;
+                        let cloudRight = c.x + c.w;
+                        
+                        // Check if player bounds overlap with cloud bounds
+                        if (playerRight > cloudLeft && playerLeft < cloudRight) {
+                            onCloud = true;
+                            // Inherit cloud movement
+                            player.x += c.speed * timeScale;
+                            break;
+                        }
+                    }
+                }
+
+                if (!onCloud) {
+                    triggerGameOver("You slipped and fell from the clouds!");
+                } else if (player.x + player.w / 2 < 0 || player.x + player.w / 2 > CANVAS_WIDTH) {
+                    // Drifted off-screen while on a cloud
+                    triggerGameOver("You drifted away into the void!");
+                }
+            } else if (player.row === 0) {
+                triggerWin();
+            }
+        }
+
+        function drawCloudShape(x, y, w, h) {
+            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+            ctx.beginPath();
+            let radius = h / 2;
+            // Left circle
+            ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+            // Right circle
+            ctx.arc(x + w - radius, y + radius, radius, 0, Math.PI * 2);
+            // Center body
+            ctx.rect(x + radius, y, w - radius*2, h);
+            ctx.fill();
+            
+            // Fluff on top
+            ctx.beginPath();
+            ctx.arc(x + w/2 - 10, y, radius + 5, 0, Math.PI * 2);
+            ctx.arc(x + w/2 + 20, y + 5, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw twinkling stars
+            stars.forEach(s => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx.fill();
+            });
+
+            // Draw Moon (Row 0 Goal Area)
+            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            ctx.fillRect(0, 0, CANVAS_WIDTH, ROW_HEIGHT); // subtle highlight for goal
+            
+            ctx.beginPath();
+            ctx.arc(CANVAS_WIDTH / 2, ROW_HEIGHT / 2, 35, 0, Math.PI*2);
+            ctx.fillStyle = "#fef08a"; // Yellow glow
+            ctx.shadowBlur = 30;
+            ctx.shadowColor = "#fef08a";
+            ctx.fill();
+            ctx.shadowBlur = 0; // Reset shadow
+            
+            // Draw Zhinü (Weaver Girl) on the Moon
+            ctx.font = "30px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("🧚🏻‍♀️", CANVAS_WIDTH / 2 + 30, ROW_HEIGHT / 2);
+
+            // Draw Start Zone (Row 7)
+            ctx.fillStyle = "rgba(30, 41, 59, 0.7)";
+            ctx.fillRect(0, ROW_HEIGHT * 7, CANVAS_WIDTH, ROW_HEIGHT);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+            ctx.beginPath();
+            ctx.moveTo(0, ROW_HEIGHT * 7);
+            ctx.lineTo(CANVAS_WIDTH, ROW_HEIGHT * 7);
+            ctx.stroke();
+
+            // Draw Clouds
+            clouds.forEach(c => {
+                let yOffset = c.row * ROW_HEIGHT + (ROW_HEIGHT - 30) / 2;
+                drawCloudShape(c.x, yOffset, c.w, 30);
+            });
+
+            // Draw Player (Niulang / Cowherd)
+            if(gameState !== 'GAME_OVER') { // Don't draw if dead to emphasize failing
+                ctx.font = "35px Arial";
+                ctx.fillText("🧑🏻‍🌾", player.x + player.w/2, player.y + player.h/2);
+            }
+        }
+
+        function gameLoop(timestamp) {
+            if (lastTime === 0) lastTime = timestamp;
+            let dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            if (gameState === 'PLAYING') {
+                update(dt);
+            }
+            
+            draw();
+            
+            if (gameState === 'PLAYING') {
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Initial setup visual (before clicking start)
+        initStars();
+        draw();
+        
+    </script>
+</body>
+</html>
